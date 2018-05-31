@@ -23,9 +23,11 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -42,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     List<MyDevice> mDevices;
     /**设备列表控件适配器*/
     ArrayAdapter<MyDevice> mAdapter;
+    TextView tv;
 
     private BroadcastReceiver mDeviceFoundReceiver = new BroadcastReceiver() {
         @Override
@@ -75,6 +78,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        tv = findViewById(R.id.tv);
         //判断手机是否有蓝牙
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if(mBluetoothAdapter==null){
@@ -144,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
 
         }
     }
+    private String mResult="";
 
     /**
      * 展示设备列表对话框
@@ -177,9 +182,46 @@ public class MainActivity extends AppCompatActivity {
                         try {
                             // TODO: 5/31/2018  连接等待对话框
                             mSocket.connect();
-                            // TODO: 5/31/2018 连接成功 
+                            // TODO: 5/31/2018 连接成功
+                            new Thread(){
+                                @Override
+                                public void run() {
+
+                                    try {
+                                        InputStream inputStream = mSocket.getInputStream();
+                                        byte[] data = new byte[1024];
+                                        int len = 0;
+
+                                        while (len != -1) {
+                                            if (inputStream.available() > 0 == false) {//inputStream接收的数据是一段段的，如果不先
+                                                continue;
+                                            } else {
+                                                try {
+                                                    Thread.sleep(300);//等待0.5秒，让数据接收完整
+                                                    len = inputStream.read(data);
+                                                    mResult = new String(data,0,len, "utf-8");
+                                                    runOnUiThread(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            tv.setText(mResult);
+                                                        }
+                                                    });
+
+                                                } catch (InterruptedException e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                        }
+
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+
+
+                                }
+                            }.start();
                         } catch (IOException e) {
-                            // TODO: 5/31/2018 连接失败 
+                            // TODO: 5/31/2018 连接失败
                             try {
                                 mSocket.close();
                             } catch (IOException e1) {
