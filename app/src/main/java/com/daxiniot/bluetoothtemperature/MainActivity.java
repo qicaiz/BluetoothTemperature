@@ -37,7 +37,6 @@ public class MainActivity extends AppCompatActivity {
 
     /**手机蓝牙适配器*/
     private BluetoothAdapter mBluetoothAdapter;
-    private ListView mDeviceListView;
     /**蓝牙通信socket*/
     BluetoothSocket mSocket;
     /**蓝牙设备集合*/
@@ -160,9 +159,9 @@ public class MainActivity extends AppCompatActivity {
                 .create();
 
         Button cancleBtn= dialogView.findViewById(R.id.btn_cancel_scan);
-        mDeviceListView = dialogView.findViewById(R.id.lvw_devices);
-        mDeviceListView.setAdapter(mAdapter);
-        mDeviceListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        ListView deviceListView = dialogView.findViewById(R.id.lvw_devices);
+        deviceListView.setAdapter(mAdapter);
+        deviceListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 deviceListDialog.dismiss();
