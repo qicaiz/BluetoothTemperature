@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresPermission;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
@@ -25,6 +26,12 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -73,11 +80,45 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
+    int xIndex=8;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         tv = findViewById(R.id.tv);
+        Button addBtn = findViewById(R.id.btn);
+        final LineChart chart = findViewById(R.id.chart);
+        final List<Entry> entries = new ArrayList<>();
+        entries.add(new Entry(1,0));
+//        entries.add(new Entry(2,0));
+//        entries.add(new Entry(3,0));
+//        entries.add(new Entry(4,0));
+        final LineDataSet lineDataSet = new LineDataSet(entries,"temperature");
+        final LineData lineData = new LineData(lineDataSet);
+        chart.setData(lineData);
+        chart.invalidate();
+        addBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                    // 位最后一个DataSet添加entry
+                Toast.makeText(MainActivity.this,"entry count="+lineData.getEntryCount(),
+                        Toast.LENGTH_SHORT).show();
+                int entryCount = lineDataSet.getEntryCount();
+                float yValue = (float) (Math.random()*100);
+                if(entryCount<8){
+                    lineDataSet.addEntry(new Entry(++entryCount,yValue));
+                } else {
+                    lineDataSet.addEntry(new Entry(++xIndex,yValue));
+                    lineDataSet.removeFirst();
+                }
+                    lineData.notifyDataChanged();
+                    chart.notifyDataSetChanged();
+                    chart.invalidate();
+                Toast.makeText(MainActivity.this,"entry count="+lineData.getEntryCount(),
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+
         //判断手机是否有蓝牙
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if(mBluetoothAdapter==null){
@@ -181,44 +222,8 @@ public class MainActivity extends AppCompatActivity {
                         try {
                             // TODO: 5/31/2018  连接等待对话框
                             mSocket.connect();
-                            // TODO: 5/31/2018 连接成功
-                            new Thread(){
-                                @Override
-                                public void run() {
-
-                                    try {
-                                        InputStream inputStream = mSocket.getInputStream();
-                                        byte[] data = new byte[1024];
-                                        int len = 0;
-
-                                        while (len != -1) {
-                                            if (inputStream.available() > 0 == false) {//inputStream接收的数据是一段段的，如果不先
-                                                continue;
-                                            } else {
-                                                try {
-                                                    Thread.sleep(300);//等待0.5秒，让数据接收完整
-                                                    len = inputStream.read(data);
-                                                    mResult = new String(data,0,len, "utf-8");
-                                                    runOnUiThread(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            tv.setText(mResult);
-                                                        }
-                                                    });
-
-                                                } catch (InterruptedException e) {
-                                                    e.printStackTrace();
-                                                }
-                                            }
-                                        }
-
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
-                                    }
-
-
-                                }
-                            }.start();
+                            //连接成功读取数据
+                            new ReadThread().start();
                         } catch (IOException e) {
                             // TODO: 5/31/2018 连接失败
                             try {
@@ -243,6 +248,43 @@ public class MainActivity extends AppCompatActivity {
         deviceListDialog.show();
 
     }
+
+
+    class ReadThread extends Thread{
+        @Override
+        public void run() {
+
+            try {
+                InputStream inputStream = mSocket.getInputStream();
+                byte[] data = new byte[1024];
+                int len = 0;
+                while (len != -1) {
+                    if (inputStream.available() <= 0) {//inputStream接收的数据是一段段的，如果不先
+                        continue;
+                    } else {
+                        try {
+                            Thread.sleep(300);//等待0.3秒，让数据接收完整
+                            len = inputStream.read(data);
+                            mResult = new String(data,0,len, "utf-8");
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    tv.setText(mResult);
+                                }
+                            });
+
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
