@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
@@ -30,6 +31,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
@@ -58,6 +61,10 @@ public class MainActivity extends AppCompatActivity {
     ArrayAdapter<MyDevice> mAdapter;
     TextView tv;
     int xIndex = 8;
+
+    LineDataSet lineDataSet;
+    LineData lineData;
+    LineChart chart;
 
     private Handler mHandler = new Handler() {
         @Override
@@ -115,22 +122,31 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-     LineDataSet lineDataSet;
-     LineData lineData;
-     LineChart chart;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         tv = findViewById(R.id.tv);
-        Button addBtn = findViewById(R.id.btn);
+
         chart = findViewById(R.id.chart);
+        chart.setDragEnabled(false);
+        XAxis xAxis = chart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setTextColor(Color.WHITE);
+        YAxis yAxisLeft = chart.getAxisLeft();
+        yAxisLeft.setTextColor(Color.WHITE);
+        YAxis yAxisRight = chart.getAxisRight();
+        yAxisRight.setTextColor(Color.WHITE);
+        yAxisRight.setEnabled(false);
         List<Entry> entries = new ArrayList<>();
-        entries.add(new Entry(1, 0));
+        entries.add(new Entry(0, 0));
+
         lineDataSet = new LineDataSet(entries, "temperature");
         lineData = new LineData(lineDataSet);
         chart.setData(lineData);
         chart.invalidate();
+
+
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         //判断手机是否有蓝牙
