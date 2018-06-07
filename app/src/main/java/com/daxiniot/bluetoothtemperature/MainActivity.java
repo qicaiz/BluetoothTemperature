@@ -72,10 +72,11 @@ public class MainActivity extends AppCompatActivity {
             switch (msg.what) {
                 case BluetoothUtil.READ_DATA:
                     String data = (String) msg.obj;
-                    tv.setText(data);
+                    float temperature = Float.valueOf(data)/100;
+                    tv.setText(temperature+"");
 
                     int entryCount = lineDataSet.getEntryCount();
-                    float yValue = Float.valueOf(data);
+                    float yValue = temperature;
                     if (entryCount < 8) {
                         lineDataSet.addEntry(new Entry(++entryCount, yValue));
                     } else {
@@ -240,6 +241,7 @@ public class MainActivity extends AppCompatActivity {
                     public void onSuccess(BluetoothSocket socket) {
                         progressDialog.dismiss();
                         mSocket = socket;
+                        BluetoothUtil.writeData(socket,"0");
                         BluetoothUtil.readData(socket, mHandler, BluetoothUtil.READ_DATA);
                     }
 

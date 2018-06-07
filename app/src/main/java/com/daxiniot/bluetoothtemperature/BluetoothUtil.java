@@ -16,6 +16,7 @@ import android.support.v7.app.AppCompatActivity;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.UUID;
 
 public class BluetoothUtil {
@@ -114,7 +115,26 @@ public class BluetoothUtil {
         }.start();
     }
 
-    public void writeData(Handler handler, int messageWhat) {
+    public static void writeData(final BluetoothSocket socket, final String message) {
+        new Thread(){
+            @Override
+            public void run() {
+                while (true){
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    try {
+                        OutputStream os = socket.getOutputStream();
+                        os.write(message.getBytes());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+            }
+        }.start();
 
     }
 
