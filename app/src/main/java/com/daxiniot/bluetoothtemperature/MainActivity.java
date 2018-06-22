@@ -127,9 +127,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        tv = findViewById(R.id.tv);
+        tv = (TextView) findViewById(R.id.tv);
 
-        chart = findViewById(R.id.chart);
+        chart = (LineChart) findViewById(R.id.chart);
         chart.setDragEnabled(false);
         XAxis xAxis = chart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
@@ -225,8 +225,8 @@ public class MainActivity extends AppCompatActivity {
         final AlertDialog deviceListDialog = new AlertDialog.Builder(MainActivity.this)
                 .setView(dialogView)
                 .create();
-        Button cancleBtn = dialogView.findViewById(R.id.btn_cancel_scan);
-        ListView deviceListView = dialogView.findViewById(R.id.lvw_devices);
+        Button cancleBtn = (Button) dialogView.findViewById(R.id.btn_cancel_scan);
+        ListView deviceListView = (ListView) dialogView.findViewById(R.id.lvw_devices);
         deviceListView.setAdapter(mAdapter);
         deviceListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
