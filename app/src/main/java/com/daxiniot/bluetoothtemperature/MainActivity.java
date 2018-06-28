@@ -1,6 +1,5 @@
 package com.daxiniot.bluetoothtemperature;
 
-import android.Manifest;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -10,14 +9,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -74,6 +71,10 @@ public class MainActivity extends AppCompatActivity {
      * 图表数据
      */
     private LineData mLineData;
+    /**
+     * 蓝牙设备列表对话框
+     */
+    private AlertDialog mDeviceListDialog;
     int xIndex = 8;
 
     private Handler mHandler = new Handler() {
@@ -141,6 +142,8 @@ public class MainActivity extends AppCompatActivity {
         //控件初始化
         mTvTemperature = (TextView) findViewById(R.id.tv_temperature);
         mLineChart = (LineChart) findViewById(R.id.chart);
+        //初始化蓝牙设备列表对话框
+        initDeviceDialog();
         //初始化图表属性
         initChart();
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -151,12 +154,51 @@ public class MainActivity extends AppCompatActivity {
         }
         //注册设备发现广播接收器
         BluetoothUtil.registerDeviceFoundReceiver(mDeviceFoundReceiver, MainActivity.this);
+    }
+
+    /**
+     * 初始化蓝牙设备列表对话框
+     */
+    private void initDeviceDialog(){
+        View DialogView = getLayoutInflater().inflate(R.layout.dialog_scan_device, null);
+        mDeviceListDialog = new AlertDialog.Builder(MainActivity.this).setView(DialogView).create();
+        Button cancelScanBtn = (Button) DialogView.findViewById(R.id.btn_cancel_scan);
+        cancelScanBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mDeviceListDialog.dismiss();
+            }
+        });
+        ListView deviceListView = (ListView) DialogView.findViewById(R.id.lvw_devices);
         //初始化蓝牙列表数据
         mDevices = new ArrayList<>();
         mAdapter = new ArrayAdapter<MyDevice>(MainActivity.this,
                 android.R.layout.simple_list_item_1, mDevices);
-    }
+        deviceListView.setAdapter(mAdapter);
+        deviceListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                mDeviceListDialog.dismiss();
+                final String address = mDevices.get(i).getAddress();
+                final ProgressDialog progressDialog = new ProgressDialog(MainActivity.this);
+                progressDialog.show();
+                BluetoothUtil.connectDevice(address, new ConnectCallback() {
+                    @Override
+                    public void onSuccess(BluetoothSocket socket) {
+                        progressDialog.dismiss();
+                        mSocket = socket;
+                        BluetoothUtil.writeData(socket, "0");
+                        BluetoothUtil.readData(socket, mHandler, BluetoothUtil.READ_DATA);
+                    }
 
+                    @Override
+                    public void onFailure() {
+                        progressDialog.dismiss();
+                    }
+                });
+            }
+        });
+    }
     /**
      * 初始化图表属性
      */
@@ -236,60 +278,15 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 开始扫描蓝牙设备
      */
-    private void startDiscoveryDevice(){
+    private void startDiscoveryDevice() {
         mDevices.clear();
         mAdapter.notifyDataSetChanged();
         if (mBluetoothAdapter.isDiscovering()) {
             mBluetoothAdapter.cancelDiscovery();
         }
         mBluetoothAdapter.startDiscovery();
-        showDeviceListDialog();
+        mDeviceListDialog.show();
     }
-
-    /**
-     * 展示设备列表对话框
-     */
-    private void showDeviceListDialog() {
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_scan_device, null);
-        final AlertDialog deviceListDialog = new AlertDialog.Builder(MainActivity.this)
-                .setView(dialogView)
-                .create();
-        Button cancleBtn = (Button) dialogView.findViewById(R.id.btn_cancel_scan);
-        ListView deviceListView = (ListView) dialogView.findViewById(R.id.lvw_devices);
-        deviceListView.setAdapter(mAdapter);
-        deviceListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                deviceListDialog.dismiss();
-                final String address = mDevices.get(i).getAddress();
-                final ProgressDialog progressDialog = new ProgressDialog(MainActivity.this);
-                progressDialog.show();
-
-                BluetoothUtil.connectDevice(address, new ConnectCallback() {
-                    @Override
-                    public void onSuccess(BluetoothSocket socket) {
-                        progressDialog.dismiss();
-                        mSocket = socket;
-                        BluetoothUtil.writeData(socket, "0");
-                        BluetoothUtil.readData(socket, mHandler, BluetoothUtil.READ_DATA);
-                    }
-
-                    @Override
-                    public void onFailure() {
-                        progressDialog.dismiss();
-                    }
-                });
-            }
-        });
-        cancleBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                deviceListDialog.dismiss();
-            }
-        });
-        deviceListDialog.show();
-    }
-
 
     @Override
     protected void onDestroy() {
