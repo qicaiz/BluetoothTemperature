@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:paddingTop="75dp"
-        android:text="25.5"
+        android:text="____ ℃"
         android:textColor="#FFFFFF"
         android:textSize="80sp" />
 

@@ -32,6 +32,7 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -84,7 +85,10 @@ public class MainActivity extends AppCompatActivity {
                 case BluetoothUtil.READ_DATA:
                     String data = (String) msg.obj;
                     float temperature = Float.valueOf(data) / 100;
-                    mTvTemperature.setText(temperature + "℃");
+                    //构造方法的字符格式这里如果小数不足2位,会以0补足
+                    DecimalFormat decimalFormat=new DecimalFormat(".00");
+                    String temperatureStr=decimalFormat.format(temperature);
+                    mTvTemperature.setText(temperatureStr + " ℃");
 
                     int entryCount = mLineDataSet.getEntryCount();
                     float yValue = temperature;
