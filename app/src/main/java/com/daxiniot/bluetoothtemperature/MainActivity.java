@@ -8,7 +8,6 @@ import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Handler;
@@ -19,7 +18,6 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -43,6 +41,7 @@ import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
+    private final static String TAG = "BluetoothTemperature:MainActivity";
     /**
      * 手机蓝牙适配器
      */
@@ -50,21 +49,32 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 蓝牙通信socket
      */
-    BluetoothSocket mSocket;
+    private BluetoothSocket mSocket;
     /**
      * 蓝牙设备集合
      */
-    List<MyDevice> mDevices;
+    private List<MyDevice> mDevices;
     /**
      * 设备列表控件适配器
      */
-    ArrayAdapter<MyDevice> mAdapter;
-    TextView tv;
+    private ArrayAdapter<MyDevice> mAdapter;
+    /**
+     * 温度显示控件
+     */
+    private TextView mTvTemperature;
+    /**
+     * 图表控件
+     */
+    private LineChart mLineChart;
+    /**
+     * 图表数据集
+     */
+    private LineDataSet mLineDataSet;
+    /**
+     * 图表数据
+     */
+    private LineData mLineData;
     int xIndex = 8;
-
-    LineDataSet lineDataSet;
-    LineData lineData;
-    LineChart chart;
 
     private Handler mHandler = new Handler() {
         @Override
@@ -72,20 +82,20 @@ public class MainActivity extends AppCompatActivity {
             switch (msg.what) {
                 case BluetoothUtil.READ_DATA:
                     String data = (String) msg.obj;
-                    float temperature = Float.valueOf(data)/100;
-                    tv.setText(temperature+"");
+                    float temperature = Float.valueOf(data) / 100;
+                    mTvTemperature.setText(temperature + "℃");
 
-                    int entryCount = lineDataSet.getEntryCount();
+                    int entryCount = mLineDataSet.getEntryCount();
                     float yValue = temperature;
                     if (entryCount < 8) {
-                        lineDataSet.addEntry(new Entry(++entryCount, yValue));
+                        mLineDataSet.addEntry(new Entry(++entryCount, yValue));
                     } else {
-                        lineDataSet.addEntry(new Entry(++xIndex, yValue));
-                        lineDataSet.removeFirst();
+                        mLineDataSet.addEntry(new Entry(++xIndex, yValue));
+                        mLineDataSet.removeFirst();
                     }
-                    lineData.notifyDataChanged();
-                    chart.notifyDataSetChanged();
-                    chart.invalidate();
+                    mLineData.notifyDataChanged();
+                    mLineChart.notifyDataSetChanged();
+                    mLineChart.invalidate();
 
                     break;
                 default:
@@ -93,7 +103,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
-
+    /**
+     * 广播监听器：负责接收搜索到蓝牙的广播
+     */
     private BroadcastReceiver mDeviceFoundReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -118,7 +130,6 @@ public class MainActivity extends AppCompatActivity {
                 myDevice.setBonded(bonded);
                 mDevices.add(myDevice);
                 mAdapter.notifyDataSetChanged();
-                Log.i("tag", "onReceive: name=" + name);
             }
         }
     };
@@ -127,73 +138,84 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        tv = (TextView) findViewById(R.id.tv);
-
-        chart = (LineChart) findViewById(R.id.chart);
-        chart.setDragEnabled(false);
-        XAxis xAxis = chart.getXAxis();
-        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setTextColor(Color.WHITE);
-        YAxis yAxisLeft = chart.getAxisLeft();
-        yAxisLeft.setTextColor(Color.WHITE);
-        YAxis yAxisRight = chart.getAxisRight();
-        yAxisRight.setTextColor(Color.WHITE);
-        yAxisRight.setEnabled(false);
-        List<Entry> entries = new ArrayList<>();
-        entries.add(new Entry(0, 0));
-
-        lineDataSet = new LineDataSet(entries, "temperature");
-        lineData = new LineData(lineDataSet);
-        chart.setData(lineData);
-        chart.invalidate();
-
-
-
+        //控件初始化
+        mTvTemperature = (TextView) findViewById(R.id.tv_temperature);
+        mLineChart = (LineChart) findViewById(R.id.chart);
+        //初始化图表属性
+        initChart();
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         //判断手机是否有蓝牙
         if (!BluetoothUtil.isBluetoothSupported()) {
             Toast.makeText(MainActivity.this, "手机上没有蓝牙，应用退出", Toast.LENGTH_SHORT).show();
             finish();
         }
-        //注册设备发现监听器
-        BluetoothUtil.registerDeviceFoundReceiver(mDeviceFoundReceiver,MainActivity.this);
+        //注册设备发现广播接收器
+        BluetoothUtil.registerDeviceFoundReceiver(mDeviceFoundReceiver, MainActivity.this);
+        //初始化蓝牙列表数据
         mDevices = new ArrayList<>();
         mAdapter = new ArrayAdapter<MyDevice>(MainActivity.this,
                 android.R.layout.simple_list_item_1, mDevices);
     }
 
+    /**
+     * 初始化图表属性
+     */
+    private void initChart() {
+        //图表不可拖拽
+        mLineChart.setDragEnabled(false);
+        //设置X轴属性
+        XAxis xAxis = mLineChart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setTextColor(Color.WHITE);
+        //设置Y轴属性
+        YAxis yAxisLeft = mLineChart.getAxisLeft();
+        yAxisLeft.setTextColor(Color.WHITE);
+        YAxis yAxisRight = mLineChart.getAxisRight();
+        yAxisRight.setTextColor(Color.WHITE);
+        yAxisRight.setEnabled(false);
+        //设置图表数据
+        List<Entry> entries = new ArrayList<>();
+        entries.add(new Entry(0, 0));
+        mLineDataSet = new LineDataSet(entries, "temperature");
+        mLineData = new LineData(mLineDataSet);
+        mLineChart.setData(mLineData);
+        mLineChart.invalidate();
+
+    }
+
+    /**
+     * 创建菜单
+     *
+     * @param menu
+     * @return
+     */
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu, menu);
         return true;
     }
 
+    /**
+     * 菜单点击事件回调方法
+     *
+     * @param item 被点击的菜单项
+     * @return
+     */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.scan_device) {
             //判断蓝牙是否已经打开
             if (!mBluetoothAdapter.isEnabled()) {
                 Toast.makeText(MainActivity.this, "请先打开蓝牙", Toast.LENGTH_SHORT).show();
-            } else {
-                //检查定位权限
-                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                 == PackageManager.PERMISSION_GRANTED) {
-                    mDevices.clear();
-                    mAdapter.notifyDataSetChanged();
-                    //展示设备列表对话框
-                    showDeviceListDialog();
-                    //开始搜索
-                    if (mBluetoothAdapter.isDiscovering()) {
-                        mBluetoothAdapter.cancelDiscovery();
-                    }
-                    mBluetoothAdapter.startDiscovery();
-                } else {
-                    ActivityCompat.requestPermissions(MainActivity.this,
-                            new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
-                }
-
+                return true;
             }
-
+            //检查定位权限是否已经开启
+            if (!BluetoothUtil.isLocationPermissionEnabled(MainActivity.this)) {
+                BluetoothUtil.requestLocationPermission(MainActivity.this);
+                return true;
+            }
+            //开始扫描设备
+            startDiscoveryDevice();
         }
         return true;
     }
@@ -201,20 +223,27 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 1) {
+        if (requestCode == BluetoothUtil.REQUEST_LOCATION_PERMISSION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                mDevices.clear();
-                mAdapter.notifyDataSetChanged();
-                if (mBluetoothAdapter.isDiscovering()) {
-                    mBluetoothAdapter.cancelDiscovery();
-                }
-                mBluetoothAdapter.startDiscovery();
-                showDeviceListDialog();
+                //赋予权限之后继续扫描设备
+                startDiscoveryDevice();
             } else {
-                Toast.makeText(MainActivity.this, "action found is not granted.", Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "定位权限未授予 无法完成设备扫描", Toast.LENGTH_LONG).show();
             }
-
         }
+    }
+
+    /**
+     * 开始扫描蓝牙设备
+     */
+    private void startDiscoveryDevice(){
+        mDevices.clear();
+        mAdapter.notifyDataSetChanged();
+        if (mBluetoothAdapter.isDiscovering()) {
+            mBluetoothAdapter.cancelDiscovery();
+        }
+        mBluetoothAdapter.startDiscovery();
+        showDeviceListDialog();
     }
 
     /**
@@ -241,7 +270,7 @@ public class MainActivity extends AppCompatActivity {
                     public void onSuccess(BluetoothSocket socket) {
                         progressDialog.dismiss();
                         mSocket = socket;
-                        BluetoothUtil.writeData(socket,"0");
+                        BluetoothUtil.writeData(socket, "0");
                         BluetoothUtil.readData(socket, mHandler, BluetoothUtil.READ_DATA);
                     }
 

@@ -11,6 +11,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 
@@ -21,6 +22,7 @@ import java.util.UUID;
 
 public class BluetoothUtil {
 
+    public final static int REQUEST_LOCATION_PERMISSION_CODE=0x03;
     public final static int READ_DATA = 1;
     public final static int WRITE_DATA = 2;
 
@@ -138,14 +140,18 @@ public class BluetoothUtil {
 
     }
 
-    public void connectHeartBeat(Handler handler) {
-
-    }
-
-    public static boolean isLocationPermissionEnabled(AppCompatActivity activity) {
-        int permissionResult = ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION);
+    /**
+     * 判断定位权限是否开启
+     * @param context
+     * @return
+     */
+    public static boolean isLocationPermissionEnabled(Context context) {
+        int permissionResult = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION);
         return permissionResult == PackageManager.PERMISSION_GRANTED;
     }
-
+    public static void requestLocationPermission(AppCompatActivity activity){
+        ActivityCompat.requestPermissions(activity,
+                new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_LOCATION_PERMISSION_CODE);
+    }
 
 }
