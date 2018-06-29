@@ -16,6 +16,7 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -33,6 +34,7 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -85,7 +87,15 @@ public class MainActivity extends AppCompatActivity {
      * 蓝牙设备列表对话框
      */
     private AlertDialog mDeviceListDialog;
-    int xIndex = 8;
+    /**
+     * 图表显示的数据个数
+     */
+    private int xIndex = 8;
+
+    /**
+     * 记录推退出时间
+     */
+    private long mEixtTime = 0;
 
     private Handler mHandler = new Handler() {
         @Override
@@ -94,25 +104,25 @@ public class MainActivity extends AppCompatActivity {
                 case BluetoothUtil.READ_DATA:
                     String data = (String) msg.obj;
                     float temperature;
-                    try{
+                    try {
                         temperature = Float.valueOf(data) / 100;
-                    } catch (NumberFormatException e){
+                    } catch (NumberFormatException e) {
                         break;
                     }
-                    Log.i(TAG, "handleMessage: temperature="+temperature);
+                    Log.i(TAG, "handleMessage: temperature=" + temperature);
                     //如果温度值超过默认Y坐标最大值，reset最大值
-                    if(temperature>AXIS_MAX){
+                    if (temperature > AXIS_MAX) {
                         YAxis yAxisLeft = mLineChart.getAxisLeft();
                         yAxisLeft.resetAxisMaximum();
                     }
                     //如果温度值小于默认Y坐标最小值，reset最小值
-                    if(temperature<AXIS_MIN){
+                    if (temperature < AXIS_MIN) {
                         YAxis yAxisLeft = mLineChart.getAxisLeft();
                         yAxisLeft.resetAxisMinimum();
                     }
                     //构造方法的字符格式这里如果小数不足2位,会以0补足
-                    DecimalFormat decimalFormat=new DecimalFormat(".00");
-                    String temperatureStr=decimalFormat.format(temperature);
+                    DecimalFormat decimalFormat = new DecimalFormat(".00");
+                    String temperatureStr = decimalFormat.format(temperature);
                     mTvTemperature.setText(temperatureStr + " ℃");
                     int entryCount = mLineDataSet.getEntryCount();
                     if (entryCount < 8) {
@@ -185,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 初始化蓝牙设备列表对话框
      */
-    private void initDeviceDialog(){
+    private void initDeviceDialog() {
         View DialogView = getLayoutInflater().inflate(R.layout.dialog_scan_device, null);
         mDeviceListDialog = new AlertDialog.Builder(MainActivity.this).setView(DialogView).create();
         Button cancelScanBtn = (Button) DialogView.findViewById(R.id.btn_cancel_scan);
@@ -225,6 +235,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
     /**
      * 初始化图表属性
      */
@@ -274,19 +285,28 @@ public class MainActivity extends AppCompatActivity {
      */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.scan_device) {
-            //判断蓝牙是否已经打开
-            if (!mBluetoothAdapter.isEnabled()) {
-                Toast.makeText(MainActivity.this, "请先打开蓝牙", Toast.LENGTH_SHORT).show();
+        switch (item.getItemId()) {
+            case R.id.scan_device:
+                //判断蓝牙是否已经打开
+                if (!mBluetoothAdapter.isEnabled()) {
+                    Toast.makeText(MainActivity.this, "请先打开蓝牙", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                //检查定位权限是否已经开启
+                if (!BluetoothUtil.isLocationPermissionEnabled(MainActivity.this)) {
+                    BluetoothUtil.requestLocationPermission(MainActivity.this);
+                    return true;
+                }
+                //开始扫描设备
+                startDiscoveryDevice();
                 return true;
-            }
-            //检查定位权限是否已经开启
-            if (!BluetoothUtil.isLocationPermissionEnabled(MainActivity.this)) {
-                BluetoothUtil.requestLocationPermission(MainActivity.this);
-                return true;
-            }
-            //开始扫描设备
-            startDiscoveryDevice();
+            case R.id.disconnect_device:
+                try {
+                    mSocket.close();
+                    mTvTemperature.setText("____ ℃");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
         }
         return true;
     }
@@ -317,10 +337,33 @@ public class MainActivity extends AppCompatActivity {
         mDeviceListDialog.show();
     }
 
+    /**
+     * 再按一次退出程序：如果用户在2秒之内连续点击返回键则退出应用
+     *
+     * @param keyCode
+     * @param event
+     * @return
+     */
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if ((System.currentTimeMillis() - mEixtTime) > 2000) {
+                Toast.makeText(MainActivity.this, "再按一次退出程序", Toast.LENGTH_SHORT).show();
+                mEixtTime = System.currentTimeMillis();
+            } else {
+                //退出应用
+                System.exit(0);
+            }
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         //退出应用时反注册设备监听器
         unregisterReceiver(mDeviceFoundReceiver);
     }
+
 }
