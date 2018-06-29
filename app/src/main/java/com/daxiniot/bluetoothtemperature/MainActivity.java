@@ -15,6 +15,7 @@ import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -39,7 +40,15 @@ import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final static String TAG = "BluetoothTemperature:MainActivity";
+    private final static String TAG = "BluetoothTemperature";
+    /**
+     * Y坐标轴默认最大值
+     */
+    private final float AXIS_MAX = 40;
+    /**
+     * Y坐标轴默认最小值
+     */
+    private final float AXIS_MIN = 20;
     /**
      * 手机蓝牙适配器
      */
@@ -84,24 +93,37 @@ public class MainActivity extends AppCompatActivity {
             switch (msg.what) {
                 case BluetoothUtil.READ_DATA:
                     String data = (String) msg.obj;
-                    float temperature = Float.valueOf(data) / 100;
+                    float temperature;
+                    try{
+                        temperature = Float.valueOf(data) / 100;
+                    } catch (NumberFormatException e){
+                        break;
+                    }
+                    Log.i(TAG, "handleMessage: temperature="+temperature);
+                    //如果温度值超过默认Y坐标最大值，reset最大值
+                    if(temperature>AXIS_MAX){
+                        YAxis yAxisLeft = mLineChart.getAxisLeft();
+                        yAxisLeft.resetAxisMaximum();
+                    }
+                    //如果温度值小于默认Y坐标最小值，reset最小值
+                    if(temperature<AXIS_MIN){
+                        YAxis yAxisLeft = mLineChart.getAxisLeft();
+                        yAxisLeft.resetAxisMinimum();
+                    }
                     //构造方法的字符格式这里如果小数不足2位,会以0补足
                     DecimalFormat decimalFormat=new DecimalFormat(".00");
                     String temperatureStr=decimalFormat.format(temperature);
                     mTvTemperature.setText(temperatureStr + " ℃");
-
                     int entryCount = mLineDataSet.getEntryCount();
-                    float yValue = temperature;
                     if (entryCount < 8) {
-                        mLineDataSet.addEntry(new Entry(++entryCount, yValue));
+                        mLineDataSet.addEntry(new Entry(++entryCount, temperature));
                     } else {
-                        mLineDataSet.addEntry(new Entry(++xIndex, yValue));
+                        mLineDataSet.addEntry(new Entry(++xIndex, temperature));
                         mLineDataSet.removeFirst();
                     }
                     mLineData.notifyDataChanged();
                     mLineChart.notifyDataSetChanged();
                     mLineChart.invalidate();
-
                     break;
                 default:
 
@@ -216,8 +238,11 @@ public class MainActivity extends AppCompatActivity {
         //设置Y轴属性
         YAxis yAxisLeft = mLineChart.getAxisLeft();
         yAxisLeft.setTextColor(Color.WHITE);
+        yAxisLeft.setAxisMaximum(AXIS_MAX);
+        yAxisLeft.setAxisMinimum(AXIS_MIN);
         YAxis yAxisRight = mLineChart.getAxisRight();
         yAxisRight.setTextColor(Color.WHITE);
+        //隐藏右侧的Y轴
         yAxisRight.setEnabled(false);
         //设置图表数据
         List<Entry> entries = new ArrayList<>();

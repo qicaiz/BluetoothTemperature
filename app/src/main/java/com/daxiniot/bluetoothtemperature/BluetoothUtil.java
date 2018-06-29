@@ -117,13 +117,18 @@ public class BluetoothUtil {
         }.start();
     }
 
+    /**
+     * 向蓝牙模块发送数据
+     * @param socket 蓝牙socket
+     * @param message 数据
+     */
     public static void writeData(final BluetoothSocket socket, final String message) {
         new Thread(){
             @Override
             public void run() {
                 while (true){
                     try {
-                        Thread.sleep(500);
+                        Thread.sleep(1000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
