@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 记录推退出时间
      */
-    private long mEixtTime = 0;
+    private long mExitTime = 0;
 
     private Handler mHandler = new Handler() {
         @Override
@@ -223,7 +223,7 @@ public class MainActivity extends AppCompatActivity {
                     public void onSuccess(BluetoothSocket socket) {
                         progressDialog.dismiss();
                         mSocket = socket;
-                        BluetoothUtil.writeData(socket, "0");
+                        BluetoothUtil.writeData(socket, "1");
                         BluetoothUtil.readData(socket, mHandler, BluetoothUtil.READ_DATA);
                     }
 
@@ -347,9 +347,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            if ((System.currentTimeMillis() - mEixtTime) > 2000) {
+            if ((System.currentTimeMillis() - mExitTime) > 2000) {
                 Toast.makeText(MainActivity.this, "再按一次退出程序", Toast.LENGTH_SHORT).show();
-                mEixtTime = System.currentTimeMillis();
+                mExitTime = System.currentTimeMillis();
             } else {
                 //退出应用
                 System.exit(0);
